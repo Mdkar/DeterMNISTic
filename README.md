@@ -1,0 +1,1 @@
+A silly MNIST classifer only using if statements for SIGBOVIK 2024
