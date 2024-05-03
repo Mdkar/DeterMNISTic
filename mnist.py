@@ -15,6 +15,9 @@ PYTHON_INDENT_STEP = "  "
 def stringify_list(_list):
     return f"[{', '.join(str(i) for i in _list)}]"
 
+def stringify_list_java(_list):
+    return f"{{{','.join(str(round(i, 3)) + 'f' for i in _list)}}}"
+
 def probabilities(node_counts):
     """
     By default, the tree stores the number of datapoints from each class in a leaf node (as the node values)
@@ -45,6 +48,31 @@ def tree_to_code(tree, index):
 
     __recurse(0, 1)
     print("")
+
+def tree_to_java_code(tree, index):
+    tree_ = tree.tree_
+    print(f"public static float[] classifier{index}(int[] img) {{")
+
+    def __recurse(node, depth):
+        indent = PYTHON_INDENT_STEP * depth
+        if tree_.feature[node] != _tree.TREE_UNDEFINED:
+            # name = node_feature_name[node]
+            name = f"img[{tree_.feature[node]}]"
+            threshold = round(tree_.threshold[node], 3)
+            
+            print(f"if({name}<={threshold}f){{", end="")
+
+            __recurse(tree_.children_left[node], depth + 1)
+
+            print(f"}}else{{", end="")
+
+            __recurse(tree_.children_right[node], depth + 1)
+            print(f"}}", end="")
+        else:
+            print(f"return new float[] {stringify_list_java(probabilities(tree_.value[node][0]))};", end="")
+
+    __recurse(0, 1)
+    print("}")
 
 def tree_to_rust_code(tree, index):
     tree_ = tree.tree_
@@ -84,24 +112,26 @@ def load_mnist(path, kind='train'):
 
     return images, labels
 
-X_train, y_train = load_mnist('MNIST', kind='train')
+X_train, y_train = load_mnist('EMNIST/raw', kind='emnist-letters-train')
 print('// Rows: %d, columns: %d' % (X_train.shape[0], X_train.shape[1]))
 
-X_test, y_test = load_mnist('MNIST', kind='t10k')
+X_test, y_test = load_mnist('EMNIST/raw', kind='emnist-letters-test')
 print('// Rows: %d, columns: %d' % (X_test.shape[0], X_test.shape[1]))
+
+print("public class EmnistTree {\n\tpublic static int works() {\n\t\treturn 0;}")
 
 # dt = DecisionTreeClassifier()
 # dt.fit(X_train, y_train)
 # print('Accuracy: %.2f' % dt.score(X_test, y_test))
 
 # rf = RandomForestClassifier(n_estimators=10, n_jobs=-1, max_depth=10, min_samples_split=10)
-rf = RandomForestClassifier(n_estimators=10, n_jobs=-1, max_depth=9)
+rf = RandomForestClassifier(n_estimators=50, n_jobs=-1, max_depth=10)
 rf.fit(X_train, y_train)
 
 print('// Accuracy: %.2f' % rf.score(X_test, y_test))
 
 for i, tree in enumerate(rf.estimators_):
-    tree_to_rust_code(tree, i)
+    tree_to_java_code(tree, i)
 
-
+print("}")
 
